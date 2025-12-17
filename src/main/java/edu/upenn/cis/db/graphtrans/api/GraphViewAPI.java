@@ -136,6 +136,12 @@ public class GraphViewAPI {
             // Get system status (platform, current graph, persistence info)
             get("/status", GraphViewAPI::getSystemStatus);
             
+            // Get graph visualization data (nodes and edges with properties)
+            get("/visualize/graph", GraphViewAPI::getVisualizationData);
+            
+            // Graph RAG - Natural Language Query (requires GEMINI_API_KEY env var)
+            post("/rag/ask", GraphViewAPI::graphRAGQuery);
+            
         } catch (Exception e) {
             e.printStackTrace();
             System.exit(1);
@@ -692,6 +698,244 @@ public class GraphViewAPI {
         } catch (Exception e) {
             res.status(500);
             return gson.toJson(Map.of("error", getErrorMessage(e)));
+        }
+    }
+    
+    private static String getVisualizationData(Request req, Response res) {
+        try {
+            String limitParam = req.queryParams("limit");
+            int limit = limitParam != null ? Integer.parseInt(limitParam) : 50;
+            
+            if (!Config.isPostgres()) {
+                res.status(400);
+                return gson.toJson(Map.of(
+                    "success", false,
+                    "error", "Visualization endpoint only works with PostgreSQL platform"
+                ));
+            }
+            
+            // Get current database name from Config workspace
+            String dbName = Config.getWorkspace();
+            if (dbName == null || dbName.isEmpty() || dbName.equals("API") || dbName.equals("SYN")) {
+                res.status(400);
+                return gson.toJson(Map.of(
+                    "success", false,
+                    "error", "No database selected. Use /graph/use endpoint first."
+                ));
+            }
+            
+            // Get PostgreSQL connection directly
+            String ip = edu.upenn.cis.db.graphtrans.Config.get("postgres.ip");
+            String portStr = edu.upenn.cis.db.graphtrans.Config.get("postgres.port");
+            String username = edu.upenn.cis.db.graphtrans.Config.get("postgres.username");
+            String password = edu.upenn.cis.db.graphtrans.Config.get("postgres.password");
+            
+            if (ip == null || portStr == null || username == null || password == null) {
+                res.status(400);
+                return gson.toJson(Map.of(
+                    "success", false,
+                    "error", "PostgreSQL configuration not found"
+                ));
+            }
+            
+            int port = Integer.parseInt(portStr);
+            
+            // Check if we're visualizing a view or the base graph
+            String viewName = req.queryParams("view");
+            String nodeTable, edgeTable;
+            boolean isView = (viewName != null && !viewName.isEmpty());
+            
+            String nodesQuery, edgesQuery;
+            
+            if (isView) {
+                // Query from view tables (N_viewname, E_viewname)
+                // Note: Views don't have property tables
+                nodeTable = "N_" + viewName;
+                edgeTable = "E_" + viewName;
+                System.out.println("[GraphViewAPI] Visualizing view: " + viewName);
+                
+                nodesQuery = String.format(
+                    "SELECT n._0 as id, n._1 as label, '' as properties " +
+                    "FROM %s n " +
+                    "GROUP BY n._0, n._1 " +
+                    "LIMIT %d", nodeTable, limit);
+                
+                edgesQuery = String.format(
+                    "SELECT e._0 as id, e._1 as from_id, e._2 as to_id, e._3 as label, '' as properties " +
+                    "FROM %s e " +
+                    "WHERE e._1 IN (SELECT _0 FROM %s LIMIT %d) " +
+                    "  AND e._2 IN (SELECT _0 FROM %s LIMIT %d) " +
+                    "GROUP BY e._0, e._1, e._2, e._3 " +
+                    "LIMIT %d", edgeTable, nodeTable, limit, nodeTable, limit, limit * 2);
+            } else {
+                // Query from base tables (N_g, E_g) with properties
+                nodeTable = "n_g";
+                edgeTable = "e_g";
+                System.out.println("[GraphViewAPI] Visualizing base graph");
+                
+                nodesQuery = String.format(
+                    "SELECT n._0 as id, n._1 as label, " +
+                    "STRING_AGG(np._1 || '=' || np._2, '||') as properties " +
+                    "FROM %s n " +
+                    "LEFT JOIN np_g np ON n._0 = np._0 " +
+                    "GROUP BY n._0, n._1 " +
+                    "LIMIT %d", nodeTable, limit);
+                
+                edgesQuery = String.format(
+                    "SELECT e._0 as id, e._1 as from_id, e._2 as to_id, e._3 as label, " +
+                    "STRING_AGG(ep._1 || '=' || ep._2, '||') as properties " +
+                    "FROM %s e " +
+                    "LEFT JOIN ep_g ep ON e._0 = ep._0 " +
+                    "WHERE e._1 IN (SELECT _0 FROM %s LIMIT %d) " +
+                    "  AND e._2 IN (SELECT _0 FROM %s LIMIT %d) " +
+                    "GROUP BY e._0, e._1, e._2, e._3 " +
+                    "LIMIT %d", edgeTable, nodeTable, limit, nodeTable, limit, limit * 2);
+            }
+            
+            // Create Postgres connection
+            edu.upenn.cis.db.postgres.Postgres postgres = new edu.upenn.cis.db.postgres.Postgres();
+            if (!postgres.connect(ip, port, username, password, dbName)) {
+                res.status(500);
+                return gson.toJson(Map.of(
+                    "success", false,
+                    "error", "Failed to connect to PostgreSQL database: " + dbName
+                ));
+            }
+            
+            // Get nodes
+            java.sql.ResultSet nodesRs = postgres.getResultSetFromSelect(nodesQuery);
+            java.util.List<java.util.Map<String, Object>> nodes = new java.util.ArrayList<>();
+            
+            while (nodesRs.next()) {
+                java.util.Map<String, Object> node = new java.util.HashMap<>();
+                node.put("id", nodesRs.getInt("id"));
+                node.put("label", nodesRs.getString("label"));
+                String props = nodesRs.getString("properties");
+                if (props != null && !props.isEmpty()) {
+                    java.util.Map<String, String> propMap = new java.util.HashMap<>();
+                    for (String prop : props.split("\\|\\|")) {
+                        String[] kv = prop.split("=", 2);
+                        if (kv.length == 2) {
+                            propMap.put(kv[0], kv[1]);
+                        }
+                    }
+                    node.put("properties", propMap);
+                }
+                nodes.add(node);
+            }
+            nodesRs.close();
+            
+            // Get edges
+            java.sql.ResultSet edgesRs = postgres.getResultSetFromSelect(edgesQuery);
+            java.util.List<java.util.Map<String, Object>> edges = new java.util.ArrayList<>();
+            
+            while (edgesRs.next()) {
+                java.util.Map<String, Object> edge = new java.util.HashMap<>();
+                edge.put("id", edgesRs.getInt("id"));
+                edge.put("from", edgesRs.getInt("from_id"));
+                edge.put("to", edgesRs.getInt("to_id"));
+                edge.put("label", edgesRs.getString("label"));
+                String props = edgesRs.getString("properties");
+                if (props != null && !props.isEmpty()) {
+                    java.util.Map<String, String> propMap = new java.util.HashMap<>();
+                    for (String prop : props.split("\\|\\|")) {
+                        String[] kv = prop.split("=", 2);
+                        if (kv.length == 2) {
+                            propMap.put(kv[0], kv[1]);
+                        }
+                    }
+                    edge.put("properties", propMap);
+                }
+                edges.add(edge);
+            }
+            edgesRs.close();
+            
+            return gson.toJson(Map.of(
+                "success", true,
+                "nodes", nodes,
+                "edges", edges,
+                "nodeCount", nodes.size(),
+                "edgeCount", edges.size()
+            ));
+            
+        } catch (Exception e) {
+            e.printStackTrace();
+            res.status(500);
+            return gson.toJson(Map.of(
+                "success", false,
+                "error", getErrorMessage(e)
+            ));
+        }
+    }
+    
+    /**
+     * Graph RAG - Natural Language Query Endpoint
+     */
+    private static String graphRAGQuery(Request req, Response res) {
+        try {
+            System.out.println("[Graph RAG] Received natural language query request");
+            
+            // Check if system is ready
+            if (!Config.isPostgres() && !Config.isSimpleDatalog()) {
+                res.status(400);
+                return gson.toJson(Map.of(
+                    "success", false,
+                    "error", "Please connect to a platform first (use /connect endpoint)"
+                ));
+            }
+            
+            String graphName = Config.getWorkspace();
+            if (graphName == null || graphName.isEmpty() || graphName.equals("API") || graphName.equals("SYN")) {
+                res.status(400);
+                return gson.toJson(Map.of(
+                    "success", false,
+                    "error", "Please select a graph first (use /graph/use endpoint)"
+                ));
+            }
+            
+            // Check for Gemini API key
+            String apiKey = System.getenv("GEMINI_API_KEY");
+            if (apiKey == null || apiKey.isEmpty()) {
+                res.status(400);
+                return gson.toJson(Map.of(
+                    "success", false,
+                    "error", "GEMINI_API_KEY environment variable not set. Please set it to use Graph RAG."
+                ));
+            }
+            
+            // Parse request
+            Map<String, String> body = gson.fromJson(req.body(), Map.class);
+            String naturalLanguageQuery = body.get("question");
+            
+            if (naturalLanguageQuery == null || naturalLanguageQuery.trim().isEmpty()) {
+                res.status(400);
+                return gson.toJson(Map.of(
+                    "success", false,
+                    "error", "Missing 'question' parameter in request body"
+                ));
+            }
+            
+            System.out.println("[Graph RAG] Processing question: " + naturalLanguageQuery);
+            
+            // Process the query using Graph RAG
+            Map<String, Object> result = GraphRAGService.processNaturalLanguageQuery(naturalLanguageQuery);
+            
+            System.out.println("[Graph RAG] Query processing complete. Success: " + result.get("success"));
+            
+            if (!(boolean) result.get("success")) {
+                res.status(500);
+            }
+            
+            return gson.toJson(result);
+            
+        } catch (Exception e) {
+            System.err.println("[Graph RAG] Error: " + e.getMessage());
+            e.printStackTrace();
+            res.status(500);
+            return gson.toJson(Map.of(
+                "success", false,
+                "error", "Graph RAG error: " + getErrorMessage(e)
+            ));
         }
     }
 }

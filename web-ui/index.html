@@ -7,6 +7,32 @@
     <!-- vis.js for graph visualization -->
     <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
     <style>
+        :root {
+            /* Light Blue & White Color Palette */
+            --dark-blue: #1e3a8a;
+            --medium-blue: #3b82f6;
+            --light-blue: #dbeafe;
+            --lighter-blue: #eff6ff;
+            --hover-blue: #2563eb;
+            --pure-white: #ffffff;
+            --off-white: #f8fafc;
+            --border-blue: #93c5fd;
+            --text-gray: #475569;
+            
+            /* Legacy variable mappings for compatibility */
+            --space-indigo: var(--dark-blue);
+            --dusty-grape: var(--text-gray);
+            --lilac-ash: var(--border-blue);
+            --almond-silk: var(--light-blue);
+            --parchment: var(--pure-white);
+            --accent-purple: var(--medium-blue);
+            
+            /* Status Colors */
+            --success-green: #10b981;
+            --warning-yellow: #f59e0b;
+            --error-red: #ef4444;
+        }
+
         * {
             margin: 0;
             padding: 0;
@@ -15,7 +41,7 @@
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, var(--lighter-blue) 0%, var(--off-white) 100%);
             min-height: 100vh;
             padding: 20px;
         }
@@ -26,17 +52,20 @@
         }
 
         .header {
-            background: white;
-            border-radius: 10px;
-            padding: 20px 30px;
-            margin-bottom: 20px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            background: var(--parchment);
+            border-radius: 12px;
+            padding: 24px 32px;
+            margin-bottom: 24px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            border-left: 4px solid var(--accent-purple);
         }
 
         .header h1 {
-            color: #667eea;
-            font-size: 28px;
-            margin-bottom: 10px;
+            color: var(--space-indigo);
+            font-size: 32px;
+            margin-bottom: 8px;
+            font-weight: 600;
+            letter-spacing: -0.5px;
         }
 
         .status {
@@ -47,16 +76,17 @@
         }
 
         .status-dot {
-            width: 10px;
-            height: 10px;
+            width: 12px;
+            height: 12px;
             border-radius: 50%;
-            background: #10b981;
+            background: var(--success-green);
             animation: pulse 2s infinite;
+            box-shadow: 0 0 8px rgba(16, 185, 129, 0.5);
         }
 
         @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.7; transform: scale(1.1); }
         }
 
         .main-grid {
@@ -67,57 +97,65 @@
         }
 
         .sidebar {
-            background: white;
-            border-radius: 10px;
-            padding: 20px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            background: var(--parchment);
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
             height: fit-content;
         }
 
         .sidebar h2 {
             font-size: 18px;
-            margin-bottom: 15px;
-            color: #333;
+            margin-bottom: 18px;
+            color: var(--space-indigo);
+            font-weight: 600;
+            letter-spacing: -0.3px;
         }
 
         .nav-button {
             display: block;
             width: 100%;
-            padding: 12px 15px;
-            margin-bottom: 8px;
-            background: #f3f4f6;
+            padding: 14px 18px;
+            margin-bottom: 10px;
+            background: var(--almond-silk);
             border: 2px solid transparent;
-            border-radius: 8px;
+            border-radius: 10px;
             cursor: pointer;
             text-align: left;
             font-size: 14px;
             font-weight: 500;
-            color: #374151;
-            transition: all 0.2s;
+            color: var(--space-indigo);
+            transition: all 0.3s ease;
         }
 
         .nav-button:hover {
-            background: #e5e7eb;
+            background: var(--lilac-ash);
+            transform: translateX(4px);
         }
 
         .nav-button.active {
-            background: #667eea;
-            color: white;
-            border-color: #667eea;
+            background: var(--accent-purple);
+            color: var(--parchment);
+            border-color: var(--accent-purple);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
         }
 
         .content {
-            background: white;
-            border-radius: 10px;
-            padding: 30px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            background: var(--parchment);
+            border-radius: 12px;
+            padding: 32px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
             min-height: 500px;
         }
 
         .content h2 {
-            color: #333;
-            font-size: 24px;
-            margin-bottom: 20px;
+            color: var(--space-indigo);
+            font-size: 26px;
+            margin-bottom: 24px;
+            font-weight: 600;
+            letter-spacing: -0.5px;
+            border-bottom: 2px solid var(--lilac-ash);
+            padding-bottom: 12px;
         }
 
         .form-group {
@@ -126,28 +164,32 @@
 
         .form-group label {
             display: block;
-            margin-bottom: 8px;
+            margin-bottom: 10px;
             font-weight: 600;
-            color: #374151;
+            color: var(--space-indigo);
+            font-size: 14px;
         }
 
         .form-group input,
         .form-group select,
         .form-group textarea {
             width: 100%;
-            padding: 12px;
-            border: 2px solid #e5e7eb;
-            border-radius: 8px;
+            padding: 14px;
+            border: 2px solid var(--lilac-ash);
+            border-radius: 10px;
             font-size: 14px;
             font-family: inherit;
-            transition: border-color 0.2s;
+            transition: all 0.3s ease;
+            background: white;
+            color: var(--space-indigo);
         }
 
         .form-group input:focus,
         .form-group select:focus,
         .form-group textarea:focus {
             outline: none;
-            border-color: #667eea;
+            border-color: var(--accent-purple);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
         }
 
         .form-group textarea {
@@ -157,36 +199,40 @@
         }
 
         .btn {
-            padding: 12px 24px;
+            padding: 14px 28px;
             border: none;
-            border-radius: 8px;
+            border-radius: 10px;
             font-size: 14px;
             font-weight: 600;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: all 0.3s ease;
             margin-right: 10px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
         }
 
         .btn-primary {
-            background: #667eea;
-            color: white;
+            background: var(--accent-purple);
+            color: var(--parchment);
         }
 
         .btn-primary:hover {
-            background: #5568d3;
+            background: var(--dusty-grape);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(59, 130, 246, 0.4);
         }
 
         .btn-secondary {
-            background: #6b7280;
-            color: white;
+            background: var(--dusty-grape);
+            color: var(--parchment);
         }
 
         .btn-secondary:hover {
-            background: #4b5563;
+            background: var(--space-indigo);
+            transform: translateY(-2px);
         }
 
         .btn-success {
-            background: #10b981;
+            background: var(--success-green);
             color: white;
         }
 
@@ -195,13 +241,14 @@
         }
 
         .result-box {
-            margin-top: 20px;
-            padding: 20px;
-            background: #f9fafb;
-            border: 2px solid #e5e7eb;
-            border-radius: 8px;
-            max-height: 400px;
+            margin-top: 24px;
+            padding: 24px;
+            background: white;
+            border: 2px solid var(--lilac-ash);
+            border-radius: 12px;
+            max-height: 600px;
             overflow-y: auto;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);
         }
 
         .result-box pre {
@@ -209,34 +256,319 @@
             word-wrap: break-word;
             font-family: 'Courier New', monospace;
             font-size: 13px;
-            color: #1f2937;
+            color: var(--space-indigo);
+            line-height: 1.6;
+        }
+        
+        /* Enhanced Output Formatting */
+        .formatted-output {
+            font-size: 14px;
+            line-height: 1.6;
+        }
+        
+        .formatted-text {
+            white-space: pre-wrap;
+            font-family: 'Courier New', monospace;
+            color: var(--text-primary);
+        }
+        
+        .output-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 12px;
+            font-weight: 600;
+        }
+        
+        .success-header {
+            background: #d1fae5;
+            color: #065f46;
+            border-left: 4px solid var(--success-green);
+        }
+        
+        .error-header {
+            background: #fee2e2;
+            color: #991b1b;
+            border-left: 4px solid var(--error-red);
+        }
+        
+        .output-icon {
+            font-size: 18px;
+        }
+        
+        .output-title {
+            font-size: 15px;
+        }
+        
+        .output-body {
+            padding: 12px;
+            background: rgba(0,0,0,0.02);
+            border-radius: 6px;
+            color: var(--text-primary);
+        }
+        
+        .output-details {
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid var(--border-blue);
+        }
+        
+        .output-section {
+            margin-bottom: 20px;
+        }
+        
+        .output-section-title {
+            font-weight: 600;
+            color: var(--dark-blue);
+            margin-bottom: 10px;
+            font-size: 15px;
+            text-transform: capitalize;
+        }
+        
+        .output-section-content {
+            padding-left: 12px;
+        }
+        
+        .simple-list {
+            list-style: none;
+            padding: 0;
+        }
+        
+        .simple-list li {
+            padding: 8px 12px;
+            margin-bottom: 6px;
+            background: var(--lighter-blue);
+            border-left: 3px solid var(--medium-blue);
+            border-radius: 4px;
+            color: var(--text-primary);
+        }
+        
+        .output-table-container {
+            overflow-x: auto;
+            border-radius: 8px;
+            border: 1px solid var(--border-blue);
+        }
+        
+        .output-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+        
+        .output-table th {
+            background: var(--light-blue);
+            color: var(--dark-blue);
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+            border-bottom: 2px solid var(--medium-blue);
+            white-space: nowrap;
+        }
+        
+        .output-table td {
+            padding: 10px 12px;
+            border-bottom: 1px solid var(--border-blue);
+            color: var(--text-primary);
+        }
+        
+        .output-table tbody tr:hover {
+            background: var(--lighter-blue);
+        }
+        
+        .output-table tbody tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .json-output {
+            background: #f8fafc;
+            padding: 16px;
+            border-radius: 6px;
+            border: 1px solid var(--border-blue);
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            line-height: 1.6;
+            overflow-x: auto;
+        }
+        
+        .json-key {
+            color: #1e40af;
+            font-weight: 600;
+        }
+        
+        .json-string {
+            color: #059669;
+        }
+        
+        .json-number {
+            color: #dc2626;
+        }
+        
+        .json-boolean {
+            color: #7c3aed;
+        }
+        
+        .json-null {
+            color: #64748b;
+            font-style: italic;
+        }
+        
+        /* Structured text formatting */
+        .text-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .text-list-item {
+            padding: 10px 14px;
+            background: var(--lighter-blue);
+            border-left: 3px solid var(--medium-blue);
+            border-radius: 6px;
+            display: flex;
+            gap: 8px;
+            align-items: flex-start;
+        }
+        
+        .text-key {
+            font-weight: 600;
+            color: var(--dark-blue);
+            min-width: 100px;
+        }
+        
+        .text-value {
+            color: var(--text-primary);
+            flex: 1;
+        }
+        
+        /* Details grid for success messages */
+        .output-details-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 12px;
+            margin-top: 12px;
+            padding: 12px;
+            background: rgba(59, 130, 246, 0.05);
+            border-radius: 6px;
+        }
+        
+        .detail-item {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        
+        .detail-label {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-gray);
+            text-transform: capitalize;
+        }
+        
+        .detail-value {
+            font-size: 14px;
+            color: var(--dark-blue);
+            font-weight: 500;
+            word-break: break-word;
+        }
+        
+        /* Visualization stats */
+        .viz-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+        
+        .stat-card {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 16px;
+            background: linear-gradient(135deg, var(--lighter-blue) 0%, white 100%);
+            border: 2px solid var(--border-blue);
+            border-radius: 10px;
+            transition: transform 0.2s;
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+        }
+        
+        .stat-icon {
+            font-size: 32px;
+        }
+        
+        .stat-info {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        
+        .stat-label {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-gray);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .stat-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--dark-blue);
+        }
+        
+        .viz-message {
+            padding: 12px;
+            background: var(--light-blue);
+            border-radius: 6px;
+            color: var(--text-primary);
+            text-align: center;
+            font-weight: 500;
+        }
+        
+        /* Error details */
+        .error-details {
+            margin-top: 12px;
+            padding: 12px;
+            background: rgba(0, 0, 0, 0.05);
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            color: #7f1d1d;
         }
 
         .success {
-            padding: 15px;
+            padding: 18px;
             background: #d1fae5;
-            border: 2px solid #10b981;
-            border-radius: 8px;
+            border: 2px solid var(--success-green);
+            border-radius: 12px;
             color: #065f46;
             margin-bottom: 20px;
+            border-left: 4px solid var(--success-green);
         }
 
         .error {
-            padding: 15px;
+            padding: 18px;
             background: #fee2e2;
-            border: 2px solid #ef4444;
-            border-radius: 8px;
+            border: 2px solid var(--error-red);
+            border-radius: 12px;
             color: #991b1b;
             margin-bottom: 20px;
+            border-left: 4px solid var(--error-red);
         }
 
         .info {
-            padding: 15px;
-            background: #dbeafe;
-            border: 2px solid #3b82f6;
-            border-radius: 8px;
-            color: #1e40af;
+            padding: 18px;
+            background: rgba(59, 130, 246, 0.1);
+            border: 2px solid var(--accent-purple);
+            border-radius: 12px;
+            color: var(--space-indigo);
             margin-bottom: 20px;
+            border-left: 4px solid var(--accent-purple);
         }
 
         .grid-2 {
@@ -246,24 +578,26 @@
         }
 
         .card {
-            padding: 20px;
-            background: #f9fafb;
-            border-radius: 8px;
-            border: 2px solid #e5e7eb;
+            padding: 24px;
+            background: white;
+            border-radius: 12px;
+            border: 2px solid var(--lilac-ash);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
         }
 
         .card h3 {
-            font-size: 16px;
-            margin-bottom: 10px;
-            color: #374151;
+            font-size: 18px;
+            margin-bottom: 14px;
+            color: var(--space-indigo);
+            font-weight: 600;
         }
 
         .loading {
             display: inline-block;
-            width: 20px;
-            height: 20px;
-            border: 3px solid #f3f4f6;
-            border-top: 3px solid #667eea;
+            width: 24px;
+            height: 24px;
+            border: 3px solid var(--almond-silk);
+            border-top: 3px solid var(--accent-purple);
             border-radius: 50%;
             animation: spin 1s linear infinite;
         }
@@ -285,22 +619,31 @@
 
         .table th,
         .table td {
-            padding: 12px;
+            padding: 14px;
             text-align: left;
-            border-bottom: 1px solid #e5e7eb;
+            border-bottom: 1px solid var(--lilac-ash);
         }
 
         .table th {
-            background: #f3f4f6;
+            background: var(--almond-silk);
             font-weight: 600;
-            color: #374151;
+            color: var(--space-indigo);
+            letter-spacing: 0.5px;
+        }
+        
+        .table td {
+            color: var(--dusty-grape);
         }
 
         .quick-actions {
             display: flex;
-            gap: 10px;
-            margin-bottom: 20px;
+            gap: 12px;
+            margin-bottom: 24px;
             flex-wrap: wrap;
+        }
+        
+        .section.active {
+            animation: fadeIn 0.4s ease-out;
         }
 
         .badge {
@@ -338,6 +681,7 @@
                 <button class="nav-button" onclick="showSection('query')">🔍 Query</button>
                 <button class="nav-button" onclick="showSection('views')">👁️ Views</button>
                 <button class="nav-button" onclick="showSection('visualize')">📈 Visualize</button>
+                <button class="nav-button" onclick="showSection('rag')">🤖 Graph RAG</button>
                 <button class="nav-button" onclick="showSection('explore')">🗺️ Explore</button>
             </div>
 
@@ -620,6 +964,52 @@
                     <div id="vizStats" class="result-box hidden" style="margin-top: 15px;"></div>
                 </div>
 
+                <!-- Graph RAG Section -->
+                <div id="section-rag" class="section hidden">
+                    <h2>🤖 Graph RAG - Ask Questions in Natural Language</h2>
+                    
+                    <div class="info">
+                        <strong>💡 About Graph RAG:</strong> Ask questions about your graph in plain English! 
+                        The AI will understand your question, generate the appropriate GQL query, execute it, 
+                        and provide you with a natural language answer.
+                        <br><br>
+                        <strong>Examples:</strong>
+                        <ul style="margin-top: 8px; margin-left: 20px;">
+                            <li>Who are the people in the IT department?</li>
+                            <li>Show me high earners from the HighPay view</li>
+                            <li>Which people work at Finance companies?</li>
+                            <li>How many social connections are in the Friends view?</li>
+                        </ul>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Your Question</label>
+                        <textarea id="ragQuestion" 
+                                  placeholder="Ask a question about your graph in natural language...&#10;&#10;Example: Who are the people in the IT department?"
+                                  style="min-height: 100px; font-family: inherit;"></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <button class="btn btn-primary" onclick="askGraphRAG()">🤖 Ask AI</button>
+                        <button class="btn btn-secondary" onclick="clearRAGResults()">🗑️ Clear</button>
+                    </div>
+
+                    <div id="ragGeneratedQuery" class="result-box hidden">
+                        <strong style="color: var(--space-indigo);">Generated GQL Query:</strong>
+                        <pre id="ragGQLContent" style="margin-top: 10px; color: var(--dusty-grape);"></pre>
+                    </div>
+
+                    <div id="ragAnswer" class="result-box hidden" style="margin-top: 20px;">
+                        <strong style="color: var(--space-indigo);">Answer:</strong>
+                        <div id="ragAnswerContent" style="margin-top: 10px; line-height: 1.8; color: var(--space-indigo);"></div>
+                    </div>
+
+                    <div id="ragRawResults" class="result-box hidden" style="margin-top: 20px;">
+                        <strong style="color: var(--space-indigo);">Raw Query Results:</strong>
+                        <pre id="ragRawContent" style="margin-top: 10px; font-size: 12px;"></pre>
+                    </div>
+                </div>
+
                 <!-- Explore Section -->
                 <div id="section-explore" class="section hidden">
                     <h2>Explore Database</h2>
@@ -672,16 +1062,388 @@
             }
         }
 
-        // Show result
+        // Enhanced result formatting with specific API response handlers
         function showResult(elementId, data, isSuccess = true) {
             const element = document.getElementById(elementId);
             element.classList.remove('hidden');
             
-            if (typeof data === 'object') {
-                element.innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+            let html = '';
+            
+            // Handle different data types
+            if (typeof data === 'string') {
+                html = formatTextOutput(data);
+            } else if (typeof data === 'object' && data !== null) {
+                html = formatApiResponse(data, elementId);
             } else {
-                element.innerHTML = `<pre>${data}</pre>`;
+                html = `<div class="formatted-output">${data || 'No data'}</div>`;
             }
+            
+            element.innerHTML = html;
+        }
+        
+        // Format API responses based on their structure
+        function formatApiResponse(data, elementId) {
+            // Error handling - check for error first
+            if (data.error || data.success === false) {
+                return formatErrorOutput(data);
+            }
+            
+            // Route to specific formatter based on response structure
+            if (data.output && typeof data.output === 'string') {
+                // Commands that return plain text output (list graphs, queries, etc.)
+                return formatCommandOutput(data);
+            }
+            
+            if (data.nodes && data.edges) {
+                // Visualization data
+                return formatVisualizationData(data);
+            }
+            
+            if (data.gql_query && data.answer) {
+                // Graph RAG response (already handled separately)
+                return formatObjectOutput(data, true);
+            }
+            
+            // Check for specific success responses
+            if (data.success === true) {
+                if (data.message) {
+                    return formatSuccessMessage(data);
+                }
+                if (data.output) {
+                    return formatCommandOutput(data);
+                }
+            }
+            
+            // Default: structured output
+            return formatObjectOutput(data, true);
+        }
+        
+        function formatCommandOutput(data) {
+            const output = data.output || '';
+            
+            if (!output || output.trim() === '') {
+                return `<div class="formatted-output"><em>No output</em></div>`;
+            }
+            
+            // Try to parse structured data from output
+            const lines = output.split('\n').filter(l => l.trim());
+            
+            // Check if it looks like a list of items
+            if (lines.length > 0 && lines[0].includes(':')) {
+                return formatStructuredText(lines);
+            }
+            
+            // Plain text output
+            return `<div class="formatted-output formatted-text">${escapeHtml(output)}</div>`;
+        }
+        
+        function formatStructuredText(lines) {
+            let html = '<div class="formatted-output"><div class="text-list">';
+            
+            for (const line of lines) {
+                const trimmed = line.trim();
+                if (!trimmed) continue;
+                
+                // Check if it's a key:value pair
+                if (trimmed.includes(':')) {
+                    const [key, ...valueParts] = trimmed.split(':');
+                    const value = valueParts.join(':').trim();
+                    html += `
+                        <div class="text-list-item">
+                            <span class="text-key">${escapeHtml(key.trim())}:</span>
+                            <span class="text-value">${escapeHtml(value)}</span>
+                        </div>
+                    `;
+                } else {
+                    html += `<div class="text-list-item">${escapeHtml(trimmed)}</div>`;
+                }
+            }
+            
+            html += '</div></div>';
+            return html;
+        }
+        
+        function formatSuccessMessage(data) {
+            const message = data.message || 'Success';
+            
+            // Extract key details to show
+            const details = {};
+            const skipKeys = ['success', 'message', 'output'];
+            
+            for (const [key, value] of Object.entries(data)) {
+                if (!skipKeys.includes(key) && value !== null && value !== undefined) {
+                    details[key] = value;
+                }
+            }
+            
+            let html = `
+                <div class="formatted-output formatted-success">
+                    <div class="output-header success-header">
+                        <span class="output-icon">✅</span>
+                        <span class="output-title">${escapeHtml(message)}</span>
+                    </div>
+            `;
+            
+            // Show details if present
+            if (Object.keys(details).length > 0) {
+                html += '<div class="output-details-grid">';
+                for (const [key, value] of Object.entries(details)) {
+                    html += `
+                        <div class="detail-item">
+                            <span class="detail-label">${escapeHtml(key)}:</span>
+                            <span class="detail-value">${escapeHtml(String(value))}</span>
+                        </div>
+                    `;
+                }
+                html += '</div>';
+            }
+            
+            html += '</div>';
+            return html;
+        }
+        
+        function formatVisualizationData(data) {
+            const nodeCount = data.nodeCount || (data.nodes ? data.nodes.length : 0);
+            const edgeCount = data.edgeCount || (data.edges ? data.edges.length : 0);
+            
+            return `
+                <div class="formatted-output">
+                    <div class="viz-stats">
+                        <div class="stat-card">
+                            <div class="stat-icon">🔵</div>
+                            <div class="stat-info">
+                                <div class="stat-label">Nodes</div>
+                                <div class="stat-value">${nodeCount}</div>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon">🔗</div>
+                            <div class="stat-info">
+                                <div class="stat-label">Edges</div>
+                                <div class="stat-value">${edgeCount}</div>
+                            </div>
+                        </div>
+                    </div>
+                    ${data.message ? `<div class="viz-message">${escapeHtml(data.message)}</div>` : ''}
+                </div>
+            `;
+        }
+        
+        function formatTextOutput(text) {
+            if (!text || text.trim() === '') {
+                return `<div class="formatted-output"><em>No output</em></div>`;
+            }
+            
+            // Check if it's JSON string
+            try {
+                const parsed = JSON.parse(text);
+                return formatApiResponse(parsed, 'unknown');
+            } catch(e) {
+                // Plain text - format with line breaks preserved
+                // Check if it looks structured
+                const lines = text.split('\n').filter(l => l.trim());
+                if (lines.length > 1 && lines.some(l => l.includes(':'))) {
+                    return formatStructuredText(lines);
+                }
+                return `<div class="formatted-output formatted-text">${escapeHtml(text)}</div>`;
+            }
+        }
+        
+        function formatObjectOutput(obj, isSuccess = true) {
+            // Check if it's an error response
+            if (obj.success === false || obj.error) {
+                return formatErrorOutput(obj);
+            }
+            
+            // Check if it's a success response with a message
+            if (obj.success === true && obj.message) {
+                return formatSuccessOutput(obj);
+            }
+            
+            // Check if it's an array (like list of graphs, views, etc.)
+            if (Array.isArray(obj)) {
+                return formatArrayOutput(obj);
+            }
+            
+            // Check if it has specific known structures
+            if (obj.graphs || obj.views || obj.nodes || obj.edges) {
+                return formatStructuredOutput(obj);
+            }
+            
+            // Default: pretty JSON with syntax highlighting
+            return formatJsonOutput(obj);
+        }
+        
+        function formatErrorOutput(obj) {
+            const message = obj.error || obj.message || 'An error occurred';
+            
+            // Extract additional error details if available
+            let details = '';
+            if (obj.details) {
+                details = `<div class="error-details">${escapeHtml(obj.details)}</div>`;
+            } else if (obj.stack && typeof obj.stack === 'string') {
+                details = `<div class="error-details"><small>${escapeHtml(obj.stack.substring(0, 200))}...</small></div>`;
+            }
+            
+            return `
+                <div class="formatted-output formatted-error">
+                    <div class="output-header error-header">
+                        <span class="output-icon">❌</span>
+                        <span class="output-title">Error</span>
+                    </div>
+                    <div class="output-body">
+                        ${escapeHtml(message)}
+                        ${details}
+                    </div>
+                </div>
+            `;
+        }
+        
+        // This is now handled by formatSuccessMessage above
+        // Keeping for backward compatibility
+        function formatSuccessOutput(obj) {
+            return formatSuccessMessage(obj);
+        }
+        
+        function formatArrayOutput(arr) {
+            if (!arr || !Array.isArray(arr)) {
+                return `<div class="formatted-output"><em>Invalid array data</em></div>`;
+            }
+            
+            if (arr.length === 0) {
+                return `<div class="formatted-output"><em>No items found</em></div>`;
+            }
+            
+            // If array of simple strings/numbers
+            if (typeof arr[0] !== 'object' || arr[0] === null) {
+                return `
+                    <div class="formatted-output">
+                        <ul class="simple-list">
+                            ${arr.map(item => `<li>${escapeHtml(String(item || 'null'))}</li>`).join('')}
+                        </ul>
+                    </div>
+                `;
+            }
+            
+            // If array of objects, try to make a table
+            return formatTableOutput(arr);
+        }
+        
+        function formatTableOutput(arr) {
+            if (!arr || arr.length === 0) {
+                return `<div class="formatted-output"><em>No data</em></div>`;
+            }
+            
+            try {
+                const keys = Object.keys(arr[0] || {});
+                
+                if (keys.length === 0) {
+                    return `<div class="formatted-output"><em>Empty objects in array</em></div>`;
+                }
+                
+                return `
+                    <div class="formatted-output">
+                        <div class="output-table-container">
+                            <table class="output-table">
+                                <thead>
+                                    <tr>
+                                        ${keys.map(k => `<th>${escapeHtml(k)}</th>`).join('')}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${arr.map(row => `
+                                        <tr>
+                                            ${keys.map(k => {
+                                                const value = row[k];
+                                                // Handle null, undefined, objects
+                                                if (value === null || value === undefined) {
+                                                    return '<td><em>null</em></td>';
+                                                } else if (typeof value === 'object') {
+                                                    return `<td><code>${escapeHtml(JSON.stringify(value))}</code></td>`;
+                                                } else {
+                                                    return `<td>${escapeHtml(String(value))}</td>`;
+                                                }
+                                            }).join('')}
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                `;
+            } catch (e) {
+                console.error('Error formatting table:', e);
+                return `<div class="formatted-output"><em>Error formatting table data</em></div>`;
+            }
+        }
+        
+        function formatStructuredOutput(obj) {
+            if (!obj || typeof obj !== 'object') {
+                return `<div class="formatted-output"><em>Invalid data</em></div>`;
+            }
+            
+            try {
+                let html = '<div class="formatted-output">';
+                
+                for (const [key, value] of Object.entries(obj)) {
+                    html += `<div class="output-section">`;
+                    html += `<div class="output-section-title">${escapeHtml(key)}</div>`;
+                    
+                    if (value === null || value === undefined) {
+                        html += `<div class="output-section-content"><em>null</em></div>`;
+                    } else if (Array.isArray(value)) {
+                        if (value.length === 0) {
+                            html += `<div class="output-section-content"><em>None</em></div>`;
+                        } else if (typeof value[0] === 'object' && value[0] !== null) {
+                            html += formatTableOutput(value);
+                        } else {
+                            html += `<ul class="simple-list">${value.map(v => `<li>${escapeHtml(String(v || 'null'))}</li>`).join('')}</ul>`;
+                        }
+                    } else if (typeof value === 'object') {
+                        html += `<div class="output-section-content">${formatJsonOutput(value)}</div>`;
+                    } else {
+                        html += `<div class="output-section-content">${escapeHtml(String(value))}</div>`;
+                    }
+                    
+                    html += `</div>`;
+                }
+                
+                html += '</div>';
+                return html;
+            } catch (e) {
+                console.error('Error formatting structured output:', e);
+                return `<div class="formatted-output"><em>Error formatting data</em></div>`;
+            }
+        }
+        
+        function formatJsonOutput(obj) {
+            const json = JSON.stringify(obj, null, 2);
+            return `<pre class="json-output">${syntaxHighlight(json)}</pre>`;
+        }
+        
+        function syntaxHighlight(json) {
+            json = escapeHtml(json);
+            return json.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, function (match) {
+                let cls = 'json-number';
+                if (/^"/.test(match)) {
+                    if (/:$/.test(match)) {
+                        cls = 'json-key';
+                    } else {
+                        cls = 'json-string';
+                    }
+                } else if (/true|false/.test(match)) {
+                    cls = 'json-boolean';
+                } else if (/null/.test(match)) {
+                    cls = 'json-null';
+                }
+                return '<span class="' + cls + '">' + match + '</span>';
+            });
+        }
+        
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
         }
 
         // Connection functions
@@ -947,96 +1709,300 @@
                 showResult('vizStats', '⏳ Loading data...');
 
                 try {
-                    let query = '';
+                    // Get current graph status
+                    const statusResponse = await fetch(`${API_URL}/status`);
+                    const status = await statusResponse.json();
+                    
+                    if (!status.currentGraph) {
+                        showResult('vizStats', '⚠️ Please select a database first');
+                        return;
+                    }
 
-                    if (source === 'base') {
-                        // Query base graph
-                        query = `MATCH (n) FROM g RETURN (n)`;
-                    } else if (source === 'view') {
+                    let fromClause = 'g';
+                    
+                    if (source === 'view') {
                         const viewName = document.getElementById('vizViewName').value;
                         if (!viewName) {
                             showResult('vizStats', '⚠️ Please select a view');
                             return;
                         }
-                        query = `MATCH (n) FROM ${viewName} RETURN (n)`;
+                        fromClause = viewName;
                     } else if (source === 'query') {
-                        query = document.getElementById('vizQuery').value.trim();
-                        if (!query) {
-                            showResult('vizStats', '⚠️ Please enter a query');
+                        const customQuery = document.getElementById('vizQuery').value.trim();
+                        if (customQuery) {
+                            // Execute custom query directly
+                            await executeCustomQueryVisualization(customQuery, limit);
                             return;
                         }
                     }
 
-                    // Fetch nodes
-                    const nodesResponse = await fetch(`${API_URL}/execute`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ command: query + (source !== 'query' ? ';' : '') })
-                    });
-
-                    // Fetch edges
-                    const edgeQuery = source === 'base' ?
-                        'MATCH (a)-[e]->(b) FROM g RETURN (a),(e),(b);' :
-                        (source === 'view' ?
-                            `MATCH (a)-[e]->(b) FROM ${document.getElementById('vizViewName').value} RETURN (a),(e),(b);` :
-                            query);
-
-                    const edgesResponse = await fetch(`${API_URL}/execute`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ command: edgeQuery })
-                    });
-
-                    // For now, create visualization from PostgreSQL data directly
-                    await visualizeFromPostgres(limit);
+                    // Fetch real data from PostgreSQL via API
+                    await visualizeFromDatabase(fromClause, limit);
 
                 } catch (error) {
                     showResult('vizStats', `❌ Error: ${error.message}`);
+                    console.error('Visualization error:', error);
                 }
             }
 
-            async function visualizeFromPostgres(limit) {
+            async function visualizeFromDatabase(fromClause, limit) {
                 try {
-                    // Get current graph
-                    const statusResponse = await fetch(`${API_URL}/status`);
-                    const status = await statusResponse.json();
-                    const dbName = status.currentGraph;
-
-                    if (!dbName) {
-                        showResult('vizStats', '⚠️ Please select a database first');
-                        return;
+                    showResult('vizStats', '⏳ Fetching graph data...');
+                    
+                    // Use the new visualization endpoint for base graph
+                    if (fromClause === 'g') {
+                        const response = await fetch(`${API_URL}/visualize/graph?limit=${limit}`);
+                        const result = await response.json();
+                        
+                        if (!result.success) {
+                            throw new Error(result.error || 'Failed to fetch visualization data');
+                        }
+                        
+                        renderVisualizationFromAPI(result.nodes, result.edges);
+                    } else {
+                        // For views, use the visualization endpoint with view parameter
+                        const viewName = fromClause;
+                        const response = await fetch(`${API_URL}/visualize/graph?limit=${limit}&view=${viewName}`);
+                        const result = await response.json();
+                        
+                        if (result.success) {
+                            renderVisualizationFromAPI(result.nodes, result.edges);
+                        } else {
+                            showResult('vizStats', `❌ Error visualizing view: ${result.error}<br><br>💡 Tip: Try using "Base Graph" source.`);
+                        }
                     }
 
-                    // Fetch nodes with properties
-                    const nodesQuery = `
-                    SELECT DISTINCT n._0 as id, n._1 as label, 
-                           STRING_AGG(np._1 || '=' || np._2, ', ') as props
-                    FROM n_g n 
-                    LEFT JOIN np_g np ON n._0 = np._0
-                    GROUP BY n._0, n._1
-                    LIMIT ${limit}
-                `;
+                } catch (error) {
+                    console.error('Error fetching from database:', error);
+                    showResult('vizStats', `❌ Error: ${error.message}`);
+                }
+            }
+            
+            function renderVisualizationFromAPI(apiNodes, apiEdges) {
+                const nodes = [];
+                const edges = [];
+                
+                const colors = {
+                    'Person': '#667eea',
+                    'Company': '#10b981',
+                    'Product': '#f59e0b',
+                    'default': '#94a3b8'
+                };
+                
+                const shapes = {
+                    'Person': 'dot',
+                    'Company': 'diamond',
+                    'Product': 'square',
+                    'default': 'dot'
+                };
+                
+                // Process nodes
+                apiNodes.forEach(node => {
+                    let title = `Type: ${node.label}<br>ID: ${node.id}`;
+                    
+                    // Add properties to tooltip
+                    if (node.properties) {
+                        title += '<br>---';
+                        for (const [key, value] of Object.entries(node.properties)) {
+                            title += `<br>${key}: ${value}`;
+                        }
+                    }
+                    
+                    // Create display label
+                    let displayLabel = node.label;
+                    if (node.properties && node.properties.name) {
+                        displayLabel = node.properties.name;
+                    }
+                    
+                    nodes.push({
+                        id: node.id,
+                        label: displayLabel,
+                        title: title,
+                        color: colors[node.label] || colors['default'],
+                        shape: shapes[node.label] || shapes['default'],
+                        size: 25
+                    });
+                });
+                
+                // Process edges
+                apiEdges.forEach(edge => {
+                    let title = `Type: ${edge.label}<br>ID: ${edge.id}`;
+                    
+                    // Add properties to tooltip
+                    if (edge.properties) {
+                        title += '<br>---';
+                        for (const [key, value] of Object.entries(edge.properties)) {
+                            title += `<br>${key}: ${value}`;
+                        }
+                    }
+                    
+                    edges.push({
+                        id: edge.id,
+                        from: edge.from,
+                        to: edge.to,
+                        label: edge.label,
+                        title: title,
+                        arrows: 'to',
+                        color: { color: '#666' },
+                        width: 2
+                    });
+                });
+                
+                if (nodes.length === 0) {
+                    showResult('vizStats', '⚠️ No data found in the database.');
+                    return;
+                }
+                
+                renderVisualization(nodes, edges);
+            }
 
-                    // Fetch edges with properties
-                    const edgesQuery = `
-                    SELECT DISTINCT e._0 as id, e._1 as from_id, e._2 as to_id, e._3 as label,
-                           STRING_AGG(ep._1 || '=' || ep._2, ', ') as props
-                    FROM e_g e
-                    LEFT JOIN ep_g ep ON e._0 = ep._0
-                    WHERE e._1 IN (SELECT _0 FROM n_g LIMIT ${limit})
-                      AND e._2 IN (SELECT _0 FROM n_g LIMIT ${limit})
-                    GROUP BY e._0, e._1, e._2, e._3
-                    LIMIT ${limit * 2}
-                `;
+            async function executeCustomQueryVisualization(query, limit) {
+                try {
+                    const response = await fetch(`${API_URL}/query`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ query: query })
+                    });
+                    
+                    const result = await response.json();
+                    
+                    if (!result.success) {
+                        throw new Error(result.error || 'Query failed');
+                    }
 
-                    // Use execute endpoint with raw SQL (not supported yet)
-                    // For now, generate sample data
-                    generateSampleVisualization(limit);
+                    parseAndRenderVisualization(result, null, limit);
 
                 } catch (error) {
-                    console.error('Error:', error);
-                    generateSampleVisualization(limit);
+                    showResult('vizStats', `❌ Query error: ${error.message}`);
                 }
+            }
+
+            function parseAndRenderVisualization(nodeResult, edgeResult, limit) {
+                const nodes = [];
+                const edges = [];
+                const nodeMap = new Map(); // Map of node ID to node object
+                
+                const colors = {
+                    'Person': '#667eea',
+                    'Company': '#10b981',
+                    'Product': '#f59e0b',
+                    'default': '#94a3b8'
+                };
+
+                // Parse node output (tab-separated format)
+                if (nodeResult && nodeResult.output) {
+                    const lines = nodeResult.output.split('\n');
+                    let isHeader = false;
+                    let headerProcessed = false;
+                    
+                    for (const line of lines) {
+                        // Skip metadata lines
+                        if (line.includes('query result') || line.includes('etime') || 
+                            line.includes('newQuery') || line.includes('WHERES') ||
+                            line.includes('[Timing]') || line.includes('[Postgres') ||
+                            line.includes('===') || !line.trim()) {
+                            continue;
+                        }
+                        
+                        // Skip header row (contains "_0" etc)
+                        if (line.includes('_0') && !headerProcessed) {
+                            headerProcessed = true;
+                            continue;
+                        }
+                        
+                        // Parse node data (tab-separated: ID in first column)
+                        const parts = line.trim().split('\t');
+                        if (parts.length > 0 && parts[0]) {
+                            const nodeId = parseInt(parts[0].trim());
+                            if (!isNaN(nodeId) && !nodeMap.has(nodeId)) {
+                                // We don't have label info from this query, so fetch it or use default
+                                nodeMap.set(nodeId, {
+                                    id: nodeId,
+                                    label: `Node\n#${nodeId}`,
+                                    title: `Node ID: ${nodeId}`,
+                                    color: colors['default'],
+                                    shape: 'dot',
+                                    size: 20
+                                });
+                            }
+                        }
+                    }
+                }
+
+                // Parse edge output (tab-separated format: from_id, to_id, edge_id)
+                if (edgeResult && edgeResult.output) {
+                    const lines = edgeResult.output.split('\n');
+                    let headerProcessed = false;
+                    
+                    for (const line of lines) {
+                        // Skip metadata lines
+                        if (line.includes('query result') || line.includes('etime') || 
+                            line.includes('newQuery') || line.includes('WHERES') ||
+                            line.includes('[Timing]') || line.includes('[Postgres') ||
+                            line.includes('===') || !line.trim()) {
+                            continue;
+                        }
+                        
+                        // Skip header row
+                        if (line.includes('_0') && !headerProcessed) {
+                            headerProcessed = true;
+                            continue;
+                        }
+                        
+                        // Parse edge data (tab-separated: from_id, to_id, edge_id)
+                        const parts = line.trim().split('\t');
+                        if (parts.length >= 3) {
+                            const fromId = parseInt(parts[0].trim());
+                            const toId = parseInt(parts[1].trim());
+                            const edgeId = parseInt(parts[2].trim());
+                            
+                            if (!isNaN(fromId) && !isNaN(toId) && !isNaN(edgeId)) {
+                                // Add nodes if they don't exist
+                                if (!nodeMap.has(fromId)) {
+                                    nodeMap.set(fromId, {
+                                        id: fromId,
+                                        label: `#${fromId}`,
+                                        title: `Node ${fromId}`,
+                                        color: colors['default'],
+                                        shape: 'dot',
+                                        size: 20
+                                    });
+                                }
+                                if (!nodeMap.has(toId)) {
+                                    nodeMap.set(toId, {
+                                        id: toId,
+                                        label: `#${toId}`,
+                                        title: `Node ${toId}`,
+                                        color: colors['default'],
+                                        shape: 'dot',
+                                        size: 20
+                                    });
+                                }
+                                
+                                // Add edge
+                                edges.push({
+                                    id: edgeId,
+                                    from: fromId,
+                                    to: toId,
+                                    label: '',
+                                    arrows: 'to',
+                                    color: { color: '#999' }
+                                });
+                            }
+                        }
+                    }
+                }
+
+                // Convert map to array
+                nodes.push(...Array.from(nodeMap.values()));
+
+                // If we got no data, show message
+                if (nodes.length === 0) {
+                    showResult('vizStats', '⚠️ No data found. Try connecting to a database first.');
+                    return;
+                }
+
+                renderVisualization(nodes, edges);
             }
 
             function generateSampleVisualization(limit) {
@@ -1163,6 +2129,96 @@
                     showResult('vizStats', '✅ Graph exported as PNG!');
                 }
             }
+
+        // Graph RAG Functions
+        async function askGraphRAG() {
+            const question = document.getElementById('ragQuestion').value.trim();
+            
+            if (!question) {
+                const answerBox = document.getElementById('ragAnswer');
+                const answerContent = document.getElementById('ragAnswerContent');
+                answerContent.innerHTML = '❌ Please enter a question';
+                answerBox.classList.remove('hidden');
+                return;
+            }
+            
+            // Show loading state
+            const answerBox = document.getElementById('ragAnswer');
+            const answerContent = document.getElementById('ragAnswerContent');
+            answerContent.innerHTML = '🤖 Thinking and querying your graph... <span class="loading" style="margin-left: 10px;"></span>';
+            answerBox.classList.remove('hidden');
+            
+            document.getElementById('ragGeneratedQuery').classList.add('hidden');
+            document.getElementById('ragRawResults').classList.add('hidden');
+            
+            try {
+                const response = await fetch(`${API_URL}/rag/ask`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ question: question })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    // Show generated query
+                    document.getElementById('ragGQLContent').textContent = result.gql_query || 'N/A';
+                    document.getElementById('ragGeneratedQuery').classList.remove('hidden');
+                    
+                    // Show answer
+                    let answerHTML = formatMarkdown(result.answer || 'No answer provided');
+                    
+                    // Add result count info
+                    if (result.result_count !== undefined && result.result_count !== null) {
+                        answerHTML += `<br><br><small style="color: var(--lilac-ash); font-size: 12px;">📊 Query returned ${result.result_count} result(s)</small>`;
+                    }
+                    
+                    answerContent.innerHTML = answerHTML;
+                    answerBox.classList.remove('hidden');
+                    
+                    // Show raw results (collapsed by default)
+                    if (result.raw_results) {
+                        document.getElementById('ragRawContent').textContent = result.raw_results;
+                        document.getElementById('ragRawResults').classList.remove('hidden');
+                    }
+                    
+                } else {
+                    // Show error
+                    answerContent.innerHTML = `<span style="color: var(--error-red);">❌ Error: ${result.error || 'Unknown error'}</span>`;
+                    answerBox.classList.remove('hidden');
+                    
+                    // Show generated query if available (even on error)
+                    if (result.gql_query) {
+                        document.getElementById('ragGQLContent').textContent = result.gql_query;
+                        document.getElementById('ragGeneratedQuery').classList.remove('hidden');
+                    }
+                }
+                
+            } catch (error) {
+                answerContent.innerHTML = `<span style="color: var(--error-red);">❌ Error: ${error.message}</span>`;
+                answerBox.classList.remove('hidden');
+                console.error('Graph RAG error:', error);
+            }
+        }
+        
+        function clearRAGResults() {
+            document.getElementById('ragQuestion').value = '';
+            document.getElementById('ragAnswer').classList.add('hidden');
+            document.getElementById('ragGeneratedQuery').classList.add('hidden');
+            document.getElementById('ragRawResults').classList.add('hidden');
+        }
+        
+        function formatMarkdown(text) {
+            // Simple markdown-like formatting for better readability
+            if (!text) return '';
+            
+            text = String(text);
+            text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>'); // Bold
+            text = text.replace(/\*(.*?)\*/g, '<em>$1</em>'); // Italic
+            text = text.replace(/\n/g, '<br>'); // Line breaks
+            text = text.replace(/`(.*?)`/g, '<code style="background: var(--almond-silk); padding: 2px 6px; border-radius: 4px; color: var(--space-indigo);">$1</code>'); // Code
+            return text;
+        }
 
         // Initialize
         checkHealth();

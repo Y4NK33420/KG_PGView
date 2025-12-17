@@ -911,8 +911,11 @@ public class PostgresStore implements Store {
 
 	@Override
 	public StoreResultSet getQueryResult(DatalogClause c) {
-		throw new NotImplementedException();
-//		return null;
+		// Convert Datalog clause to SQL and execute
+		// This is primarily used for querying catalog tables
+		String sql = getSqlForDatalogClause(c);
+		System.out.println("[PostgresStore] getQueryResult SQL: " + sql);
+		return getPostgres(dbname).select(sql);
 	}
 	
 	@Override

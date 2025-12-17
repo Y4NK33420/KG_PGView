@@ -341,7 +341,9 @@ public class CommandExecutor {
 			Config.setWorkspace(graphName);		
 			status = Status.USE;
 			if (Config.isNeo4j() == false) {
-//				Catalog.load(store); // FIXME: disable load() temporarily
+				// Load catalog including views from database
+				Catalog.load(store);
+				System.out.println("[useGraph] Catalog loaded for graph: " + graphName);
 			}
 			Util.resetVarDicEncoding("view");
 			Util.resetVarDicEncoding("ruleid");
@@ -589,6 +591,12 @@ public class CommandExecutor {
 		
 //		System.out.println("code 4124 program p : " + p);
 		store.createView(p, transRuleList);
+
+		// Save view definition to catalog for persistence (only when not loading)
+		if (isLoad == false) {
+			ViewRule.insertCatalogView(store, viewName, baseName, viewType, query, level);
+			System.out.println("[createView] View definition saved to catalog: " + viewName);
+		}
 
 		Util.getVarDicEncoding("view", viewName);
 		long et = Util.getElapsedTime(tid);
@@ -1002,6 +1010,8 @@ public class CommandExecutor {
 		long et = Util.getElapsedTime(tid);
 		if (rs != null) {
 			System.out.println("query result #: " + rs.getResultSet().size() + " etime[" + et + "] #ofRules: " + numberOfRules);
+			// Output the actual query results
+			outputStoreResultSet(rs);
 		} else {
 			System.out.println("query rs is null etime[" + et + "]");
 		}

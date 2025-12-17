@@ -39,23 +39,33 @@ public class Catalog {
 	public static HashMap<String, ViewCatalog> loadViewCatalog() {
 		HashMap<String, ViewCatalog> catalogs = new HashMap<String, ViewCatalog>();
 		
-		String query = "_(n,b,t,q,l) <- " + Config.relname_catalog_view + "(n,b,t,q,l)."; 
-		DatalogParser parser = new DatalogParser(new DatalogProgram());
-		DatalogClause q = parser.ParseQuery(query);
-		
-		StoreResultSet rs = store.getQueryResult(q);
-		
-		if (rs != null) {
-			ArrayList<Tuple<SimpleTerm>> result = rs.getResultSet();
-			int rows = result.size();
-			for (int i = 0; i < rows; i++) {
-				String name = result.get(i).getTuple().get(0).getString();
-				String base = result.get(i).getTuple().get(1).getString();
-				String type = result.get(i).getTuple().get(2).getString();
-				String viewQuery = result.get(i).getTuple().get(3).getString();
-				long level = result.get(i).getTuple().get(4).getLong();
-				catalogs.put(name, new ViewCatalog(name, base, type, viewQuery, level));
+		try {
+			String query = "_(n,b,t,q,l) <- " + Config.relname_catalog_view + "(n,b,t,q,l)."; 
+			System.out.println("[Catalog] loadViewCatalog query: " + query);
+			DatalogParser parser = new DatalogParser(new DatalogProgram());
+			DatalogClause q = parser.ParseQuery(query);
+			System.out.println("[Catalog] Parsed query clause: " + q);
+			
+			StoreResultSet rs = store.getQueryResult(q);
+			System.out.println("[Catalog] Result set: " + (rs != null ? "not null" : "null"));
+			
+			if (rs != null) {
+				ArrayList<Tuple<SimpleTerm>> result = rs.getResultSet();
+				int rows = result != null ? result.size() : 0;
+				System.out.println("[Catalog] Found " + rows + " rows");
+				for (int i = 0; i < rows; i++) {
+					String name = result.get(i).getTuple().get(0).getString();
+					String base = result.get(i).getTuple().get(1).getString();
+					String type = result.get(i).getTuple().get(2).getString();
+					String viewQuery = result.get(i).getTuple().get(3).getString();
+					long level = result.get(i).getTuple().get(4).getLong();
+					System.out.println("[Catalog] View from catalog: " + name + " (" + type + ")");
+					catalogs.put(name, new ViewCatalog(name, base, type, viewQuery, level));
+				}
 			}
+		} catch (Exception e) {
+			System.out.println("[Catalog] Error loading view catalog: " + e.getMessage());
+			e.printStackTrace();
 		}
 		return catalogs;
 	}
@@ -160,22 +170,36 @@ public class Catalog {
 		Schema.clear();
 		GraphTransServer.getEgdList().clear();
 //		loadBaseSchema();
+		System.out.println("[Catalog] Loading view catalog from database...");
 		HashMap<String, ViewCatalog> views = loadViewCatalog();
+		System.out.println("[Catalog] Found " + views.size() + " views in catalog");
 		
 		for (HashMap.Entry<String, ViewCatalog> entry : views.entrySet()) {
-			ViewCatalog viewCatalog = entry.getValue();
-			
-			ViewParser parser = new ViewParser();
-			String createViewQuery = viewCatalog.getQuery();
-//			System.out.println("load createViewQuery: " + createViewQuery);
-			TransRuleList transRuleList = parser.Parse(createViewQuery);
+			try {
+				ViewCatalog viewCatalog = entry.getValue();
+				System.out.println("[Catalog] Loading view: " + viewCatalog.getViewName());
+				
+				ViewParser parser = new ViewParser();
+				String createViewQuery = viewCatalog.getQuery();
+				System.out.println("[Catalog] Query: " + createViewQuery);
+				TransRuleList transRuleList = parser.Parse(createViewQuery);
 
-			CommandExecutor.createView(true, createViewQuery, transRuleList);
+				if (transRuleList != null) {
+					CommandExecutor.createView(true, createViewQuery, transRuleList);
+					System.out.println("[Catalog] Successfully loaded view: " + viewCatalog.getViewName());
+				} else {
+					System.out.println("[Catalog] Failed to parse view: " + viewCatalog.getViewName());
+				}
+			} catch (Exception e) {
+				System.out.println("[Catalog] Error loading view " + entry.getKey() + ": " + e.getMessage());
+				e.printStackTrace();
+			}
 		}
 		loadEgdList();
 		loadIndexList();
 		loadSIndexList();
 		loadSchemaNode();
-		loadSchemaEdge();		
+		loadSchemaEdge();
+		System.out.println("[Catalog] Catalog loading complete");
 	}	
 }

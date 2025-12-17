@@ -1,140 +1,475 @@
-# Implementation Strategies for Views over Property Graphs
+# PG-View: Property Graph Views & Knowledge Graph System
 
- * This document describes how to setup and use with the source codes, datasets, and scripts used for the experiments in [our paper](https://dl.acm.org/doi/abs/10.1145/3654949) published in SIGMOD 2024.
- * We tested the process described in this document on a virtual machine (Hyper-V on Windows 10) assigned with 16GB of RAM and confirmed that it works as intended.
- * For convenience, we refer to the prototype system implementation described in the paper as PGVIEW.
+A powerful knowledge graph system with support for virtual and materialized views over property graphs. Features a REST API, Python client library, interactive web interface, and AI-powered natural language querying.
 
-## Setup  
-We outline the installation process for a newly installed Ubuntu Server 22.04.5 LTS. You may need sudo privileges to install some packages.
+> Built upon the research from ["Implementing Views for Property Graphs"](https://dl.acm.org/doi/abs/10.1145/3654949) (SIGMOD 2024) by Han & Ives, University of Pennsylvania. Extended as part of a DBMS course project with production-ready features and modern tooling.
 
-We use the ```tools``` directory within the home directory to download and install necessary tools.
+## ✨ Features
 
-  > mkdir ~/tools
+- **🔍 Property Graph Views**: Create virtual and materialized views with pattern matching, filtering, and transformations
+- **🌐 REST API**: 20+ endpoints for graph management, querying, and view operations (port 7070)
+- **🐍 Python Client**: Full-featured library with type hints and comprehensive examples
+- **🎨 Web UI**: Interactive interface with graph visualization powered by Vis.js
+- **🤖 Graph RAG**: Natural language querying using Google Gemini AI
+- **💾 Multi-Backend**: Support for PostgreSQL, SimpleDatalog, Neo4j, and LogicBlox
+- **⚡ Query Optimization**: SSR (Substitution Subgraph Relations) indexes and rewriting
+- **✅ Type Checking**: Z3-powered validation for view definitions
 
-### Install basic packages
-   > sudo apt-get install openjdk-11-jdk
-   
-   > sudo apt install maven 
-   
-   > sudo apt install unzip
+## 🚀 Quick Start
 
-### Install Z3 library
-Z3 is a theorem prover from Microsoft Research.
+### Prerequisites
 
- > cd ~/tools
- 
- > wget https://github.com/Z3Prover/z3/releases/download/z3-4.8.7/z3-4.8.7-x64-ubuntu-16.04.zip
- 
- > unzip z3-4.8.7-x64-ubuntu-16.04.zip
- 
- > mvn install:install-file -Dfile=${HOME}/tools/z3-4.8.7-x64-ubuntu-16.04/bin/com.microsoft.z3.jar -DgroupId=com.microsoft -DartifactId=z3 -Dversion=4.8.7 -Dpackaging=jar -DgeneratePom=true
+- Java 11+
+- Maven 3.6+
+- PostgreSQL 14+ (or use SimpleDatalog for in-memory testing)
+- Python 3.7+ (for Python client and scripts)
 
-### Install LogicBlox
-LogicBlox is a Datalog-native DBMS.
-#### Download and Install LogicBlox 4.41.0
- > cd ~/tools
- 
- > wget https://web.archive.org/web/20230723162235/https://developer.logicblox.com/wp-content/uploads/2022/04/logicblox-linux-4.41.0.tar_.gz
- 
- > tar xvfz logicblox-linux-4.41.0.tar_.gz
- 
- > mv logicblox-x86_64-linux-4.41.0-b6f5db3debd8e24b2d562d2a2078938d7003b06c/ logicblox
+### Installation
 
- #### Setup LogicBlox before starting LogicBlox
- > cd ~/tools/logicblox
- 
- > source etc/profile.d/logicblox.sh
- 
- > source etc/bash_completion.d/logicblox.sh
- 
- > export LB_MEM=12G \# To set the buffer memory size
+```bash
+# Clone the repository
+git clone https://github.com/PennGraphDB/pg-view.git
+cd pg-view
 
- #### How to Start LogicBlox
- > lb services start
+# Compile the project
+mvn clean compile
+
+# Configure database connection (optional, defaults work for local PostgreSQL)
+# Edit conf/graphview.conf if needed
+```
+
+### Start the REST API Server
+
+```bash
+mvn exec:java@api -Dexec.args="conf/graphview.conf"
+```
+
+Server runs at `http://localhost:7070`
+
+### Access the Web Interface
+
+```bash
+# In a new terminal
+cd web-ui
+python3 -m http.server 8080
+```
+
+Open `http://localhost:8080` in your browser
+
+### Use the Python Client
+
+```bash
+cd python-client
+pip install -r requirements.txt
+python3 example_knowledge_graph.py
+```
+
+## 📖 Usage Examples
+
+### Python Client
+
+```python
+from pgview_client import PGViewClient
+
+# Initialize client
+client = PGViewClient("http://localhost:7070")
+
+# Connect and setup graph
+client.connect("pg")  # PostgreSQL backend
+client.create_graph("MyKnowledgeGraph")
+client.use_graph("MyKnowledgeGraph")
+
+# Define schema
+client.add_node_schema("Person")
+client.add_node_schema("Company")
+client.add_edge_schema("WorksFor", "Person", "Company")
+
+# Insert data
+client.insert_node(1, "Person")
+client.insert_node_property(1, "name", "Alice")
+client.insert_node_property(1, "age", "30")
+
+client.insert_node(2, "Company")
+client.insert_node_property(2, "name", "TechCorp")
+
+client.insert_edge(100, 1, 2, "WorksFor")
+
+# Query the graph
+result = client.query("""
+    MATCH (p:Person)-[w:WorksFor]->(c:Company) 
+    FROM g 
+    WHERE p.age > 25
+    RETURN (p),(c)
+""")
+print(result)
+
+# Create a view
+view_def = """
+CREATE virtual VIEW Employees ON g (
+  MATCH (p:Person)-[w:WorksFor]->(c:Company)
+)
+"""
+client.create_view(view_def)
+
+# Query the view
+result = client.query("MATCH (p:Person)-[w]->(c:Company) FROM Employees RETURN (p),(c)")
+```
+
+### REST API
+
+```bash
+# Connect to PostgreSQL
+curl -X POST http://localhost:7070/connect \
+  -H "Content-Type: application/json" \
+  -d '{"platform":"pg"}'
+
+# Create a graph
+curl -X POST http://localhost:7070/graph/create \
+  -H "Content-Type: application/json" \
+  -d '{"name":"TestGraph"}'
+
+# Use the graph
+curl -X POST http://localhost:7070/graph/use \
+  -H "Content-Type: application/json" \
+  -d '{"name":"TestGraph"}'
+
+# Execute a query
+curl -X POST http://localhost:7070/query \
+  -H "Content-Type: application/json" \
+  -d '{"query":"MATCH (p:Person) FROM g RETURN (p)"}'
+```
+
+### Natural Language Queries (Graph RAG)
+
+```bash
+# Set your Gemini API key
+export GEMINI_API_KEY="your-api-key"
+
+# Ask questions in plain English
+curl -X POST http://localhost:7070/rag/ask \
+  -H "Content-Type: application/json" \
+  -d '{"question":"Who are the people in the IT department?"}'
+```
+
+## 📚 GQL Language Reference
+
+### Graph Management
+```gql
+connect pg;              -- Connect to PostgreSQL
+connect sd;              -- Connect to SimpleDatalog (in-memory)
+create graph MyGraph;
+use MyGraph;
+list;                    -- List all graphs
+```
+
+### Schema Definition
+```gql
+create node Person;
+create node Company;
+create edge WorksFor(Person -> Company);
+schema;                  -- View current schema
+```
+
+### Data Insertion
+```gql
+insert N(1, "Person");                    -- Insert node
+insert E(100, 1, 2, "WorksFor");          -- Insert edge
+insert NP(1, "name", "Alice");            -- Insert node property
+insert EP(100, "since", "2020");          -- Insert edge property
+```
+
+### Querying
+```gql
+-- Basic pattern matching
+MATCH (a:Person)-[x:WorksFor]->(c:Company) FROM g RETURN (a),(c),(x);
+
+-- With conditions
+MATCH (a:Person)-[x:WorksFor]->(c:Company) 
+FROM g 
+WHERE a.age > 25 AND c.industry = "Tech"
+RETURN (a),(c);
+
+-- Multi-hop queries
+MATCH (a:Person)-[x:Knows]->(b:Person)-[y:Knows]->(c:Person) 
+FROM g 
+RETURN (a),(c);
+
+-- Path patterns with regex
+MATCH (a:Person)-[x:Knows*]->(b:Person) 
+FROM g 
+RETURN (a),(b);
+```
+
+### View Creation
+```gql
+-- Selection view (filters existing graph)
+CREATE virtual VIEW Employees ON g (
+  MATCH (p:Person)-[w:WorksFor]->(c:Company)
+);
+
+-- Transformation view (changes structure)
+CREATE virtual VIEW UserNetwork ON g WITH DEFAULT MAP (
+  MATCH (a:Person)-[k:Knows]->(b:Person)
+  CONSTRUCT (a:User)-[k:ConnectedTo]->(b:User)
+);
+
+-- View with derived relationships
+CREATE virtual VIEW Colleagues ON g (
+  MATCH (p1:Person)-[w1:WorksFor]->(c:Company)
+  MATCH (p2:Person)-[w2:WorksFor]->(c:Company)
+  CONSTRUCT (p1:Person)-[coworker:ColleagueOf]->(p2:Person)
+  SET coworker = SK("colleague", p1, p2)
+);
+
+-- Query a view
+MATCH (u:User)-[c:ConnectedTo]->(u2:User) FROM UserNetwork RETURN (u),(u2);
+```
+
+## 🏗️ Architecture
+
+```
+┌─────────────────────────────────────────────────────────┐
+│              User Interfaces                             │
+│  ┌────────────┐  ┌────────────┐  ┌────────────┐        │
+│  │  Web UI    │  │  Python    │  │  REST API  │        │
+│  │  (Vis.js)  │  │  Client    │  │  (curl)    │        │
+│  └─────┬──────┘  └─────┬──────┘  └─────┬──────┘        │
+└────────┼────────────────┼────────────────┼──────────────┘
+         │                │                │
+         └────────────────┼────────────────┘
+                          │ HTTP/JSON
+         ┌────────────────▼────────────────┐
+         │  REST API Server (Javalin)       │
+         │  - Graph Management              │
+         │  - Query Execution               │
+         │  - View Operations               │
+         │  - Graph RAG (Gemini AI)         │
+         └────────────────┬────────────────┘
+                          │
+         ┌────────────────▼────────────────┐
+         │  PG-View Core Engine             │
+         │  - Command Parser                │
+         │  - View Engine                   │
+         │  - Query Rewriter                │
+         │  - Type Checker (Z3)             │
+         │  - Datalog Translator            │
+         └────────────────┬────────────────┘
+                          │
+    ┌────────────┬────────┼────────┬─────────────┐
+    │            │        │        │             │
+┌───▼────┐  ┌───▼────┐  ┌▼────┐  ┌▼─────┐  ┌──▼──────┐
+│Postgres│  │Simple  │  │Logic│  │ Neo4j│  │ Gemini  │
+│  SQL   │  │Datalog │  │Blox │  │Cypher│  │   AI    │
+└────────┘  └────────┘  └─────┘  └──────┘  └─────────┘
+```
+
+## 📁 Project Structure
+
+```
+pg-view/
+├── src/main/java/          # Java source code
+│   └── edu/upenn/cis/db/graphtrans/
+│       ├── api/            # REST API server (GraphViewAPI.java, GraphRAGService.java)
+│       ├── parser/         # GQL parsers
+│       ├── store/          # Backend implementations (PostgreSQL, Neo4j, etc.)
+│       ├── datalog/        # Datalog engine and rewriting
+│       └── typechecker/    # Z3-based type checking
+├── python-client/
+│   ├── pgview_client.py    # Python client library
+│   ├── example_knowledge_graph.py
+│   └── requirements.txt
+├── web-ui/
+│   └── index.html          # Interactive web interface
+├── scripts/                # Utility scripts
+│   ├── generate_dummy_data.py
+│   └── load_dummy_data.py
+├── docs/                   # Comprehensive documentation
+│   ├── START_HERE.md       # Quick start guide
+│   ├── PYTHON_API_SUMMARY.md
+│   ├── GRAPH_RAG_README.md
+│   └── API_QUICK_START.md
+├── conf/
+│   └── graphview.conf      # Configuration file
+└── pom.xml                 # Maven build configuration
+```
+
+## 🗄️ Backend Support
+
+| Backend | Code | Use Case | Persistence | Scale |
+|---------|------|----------|-------------|-------|
+| **PostgreSQL** | `pg` | Production, large graphs | Full ACID | Millions of nodes |
+| **SimpleDatalog** | `sd` | Development, testing | In-memory | Thousands of nodes |
+| **LogicBlox** | `lb` | Advanced analytics | Full | Large scale |
+| **Neo4j** | `n4` | Native graph DB | Full | Large scale |
+
+## 🔧 API Endpoints
+
+### Core Operations
+- `GET /health` - Server health check
+- `POST /connect` - Connect to backend platform
+- `POST /graph/create` - Create new graph
+- `POST /graph/use` - Switch to graph
+- `GET /graphs` - List all graphs
+- `DELETE /graph/{name}` - Delete graph
+
+### Schema Management
+- `POST /schema/node` - Add node type
+- `POST /schema/edge` - Add edge type
+- `GET /schema` - Get current schema
+
+### Data Operations
+- `POST /data/insert` - Insert node/edge/property
+- `POST /data/import` - Import from CSV
+
+### View Operations
+- `POST /view/create` - Create view
+- `GET /views` - List all views
+- `GET /program` - Get Datalog program
+
+### Query Operations
+- `POST /query` - Execute GQL query
+- `POST /execute` - Execute raw command
+- `POST /execute-batch` - Batch operations
+
+### AI Features
+- `POST /rag/ask` - Natural language query (requires `GEMINI_API_KEY`)
+
+## 📊 Sample Data
+
+Generate and load sample data for testing:
+
+```bash
+# Generate 500 nodes and 3000+ edges (Person, Company, Product)
+python3 scripts/generate_dummy_data.py
+
+# Load into database
+python3 scripts/load_dummy_data.py
+```
+
+## 🔬 PostgreSQL Setup
 
 ### Install PostgreSQL
-PostgreSQL is an open-source relational DBMS supporting SQL.
-#### Download and install PosgreSQL 14.13.
-  > sudo apt install postgresql-14
-#### How to setup Postgresql
-You can set your postgres account your own account and set it in the confiugration file described later. 
- 
- We describe how to use the ```postgres``` account and change its password to ```postgres@```. 
- > sudo su - postgres
 
- > psql -U postgres
+```bash
+# Ubuntu/Debian
+sudo apt install postgresql-14
 
- In the PSQL shell, enter the following
- > alter user postgres with password 'postgres@';
+# macOS
+brew install postgresql@14
+```
 
- Exit the PSQL shell and return to your original user account. Then, modify ```pg_hba.conf``` and change to ```md5``` from ```peer```
- > sudo vi /etc/postgresql/14/main/pg_hba.conf
+### Configure Authentication
 
- ```
- Database administrative login by Unix domain socket
- local      all              postgres                                md5  # was 'peer'
- ```
+```bash
+# Switch to postgres user
+sudo su - postgres
+psql -U postgres
 
- Then restart the PostgreSQL server,
- > sudo service postgresql restart
+# In PostgreSQL shell
+ALTER USER postgres WITH PASSWORD 'postgres@';
+\q
 
-### Install Neo4j (Optional)
-Neo4j is a widely used graph database system and supports the Cypher graph query language. 
+# Edit pg_hba.conf to use md5 authentication
+sudo vi /etc/postgresql/14/main/pg_hba.conf
+# Change 'peer' to 'md5' for local connections
 
-PGVIEW includes an embedded Neo4j server, so you don't need to install a separate Neo4j instance to run it. However, you'll need a standalone Neo4j installation to create experimental Neo4j database snapshots. The installed directory is ```~/tools/neo4j-community-4.1.11```.
+# Restart PostgreSQL
+sudo service postgresql restart
+```
 
-  > cd ~/tools
-  
-  > wget https://dist.neo4j.org/neo4j-community-4.1.11-unix.tar.gz
-  
-  > tar xvfz neo4j-community-4.1.11-unix.tar.gz
+## 🧪 Advanced Features
 
+### SSR Indexes (Query Optimization)
 
+Create indexes for faster query execution:
 
-## Quick Start
-This outlines how to install and execute PGVIEW.
+```gql
+create index ssr Person knows;
+```
 
-We use the ```src``` directory within the home directory as the base directory.
-> mkdir ~/src
+This materializes substitution subgraph relations for efficient query rewriting.
 
-> cd ~/src
+### Materialized Views
 
-Step 1. Clone the repository.
-> git clone https://github.com/PennGraphDB/pg-view.git
+Pre-compute views for instant access:
 
-Note: If you are unzipping the downloaded source code archive instead of cloning the repository, set the source code directory to ```pg-view``` under ```~/src```.
+```gql
+CREATE materialized VIEW FrequentFriends ON g (
+  MATCH (a:Person)-[k:knows]->(b:Person)
+  WHERE a.friendship_score > 80
+);
+```
 
-Setp 2. Use Maven to compile the source code.
- > cd pg-view
- 
- > mvn compile
+### Type Checking
 
-Step 3. Configure the ```conf/graphview.conf``` file as needed. No changes should be necessary if you've followed these instructions precisely.
+Enable type checking to validate view definitions:
 
-Step 4. Start PGVIEW using Maven.
- > mvn exec:java@console
+```gql
+option typecheck on;
+```
 
+Uses Z3 theorem prover to detect rule overlaps and ensure consistency.
 
- 
-## Run Experiments
-Our experiment includes five graph datasets from a variety of domains. For a detailed description of the datasets, workloads, views, and queries used in the experiment, please refer to [this page](docs/workload.md).
+## 📖 Documentation
 
+- **[START_HERE.md](docs/START_HERE.md)** - Comprehensive quick start guide
+- **[PYTHON_API_SUMMARY.md](docs/PYTHON_API_SUMMARY.md)** - Python client reference
+- **[GRAPH_RAG_README.md](docs/GRAPH_RAG_README.md)** - Natural language querying guide
+- **[API_QUICK_START.md](docs/API_QUICK_START.md)** - REST API quick reference
+- **[README_VISUALIZATION.md](docs/README_VISUALIZATION.md)** - Web UI guide
+- **[Implementation_detail.md](docs/Implementation_detail.md)** - Java architecture details
 
-| Abbreviation  | Name        | Type  | \|N\| | \|E\| |
-| ------------- |-------------| ----- | ----- | ----- |
-| LSQB | Labelled Subgraph Query Benchmark | Syntactic (social) | 3.96M | 22.20M |
-| OAG | Open Aacademic Graph | Citation | 18.62M | 22.93M | 
-| PROV | Wikipedia Edits | Provenance | 5.15M | 2.65M | 
-| SOC | Twitter | Social | 713K | 405K | 
-| WORD | WordNet | Knowledge | 823K | 472K | 
- 
- The following script should be run on the ```experiment``` directory.
- > cd ~/src/pg-view/experiment
+## 🔒 Security Notes
 
-Step 1: Download and prepare the dataset (approximately 25 minutes on the test machine).  Refer to [this page](docs/datasets.md) for workload details. 
+⚠️ **For development/testing only** - Configure security for production use:
 
-  > ./setup.sh
- 
- Step 2: Run experiments 
- 
-  > ./run.sh -i 1 -p lb -v mv -d word
+- Default PostgreSQL password is `postgres@` - **change this**
+- API has no authentication - **add auth layer**
+- CORS is set to `*` - **restrict origins**
+- Gemini API key exposed via environment - **use secrets management**
+
+## 🐛 Troubleshooting
+
+### Server won't start
+```bash
+# Check Java version
+java -version  # Should be 11+
+
+# Check port availability
+lsof -i :7070
+
+# Check Maven
+mvn --version
+```
+
+### PostgreSQL connection fails
+```bash
+# Check PostgreSQL is running
+sudo service postgresql status
+
+# Test connection
+psql -U postgres -h 127.0.0.1
+
+# Verify credentials in conf/graphview.conf
+```
+
+### Web UI CORS errors
+- Restart API server
+- Clear browser cache
+- Check browser console for specific errors
+
+## 🤝 Contributing
+
+This project welcomes contributions! Areas for enhancement:
+
+- Additional backend support (e.g., DuckDB, SQLite)
+- Query optimization techniques
+- Incremental view maintenance (IVM)
+- Performance benchmarking tools
+- Additional LLM providers for RAG
+- Enhanced web UI features
+
+## 🙏 Acknowledgments
+
+Based on research by Soonbo Han and Zachary G. Ives (University of Pennsylvania) published in SIGMOD Record 2024. Original paper: ["Implementing Views for Property Graphs"](https://sigmodrecord.org/publications/sigmodRecord/2503/pdfs/14_property-han.pdf)
+

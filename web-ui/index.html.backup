@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PG-View Knowledge Graph Manager</title>
+    <!-- vis.js for graph visualization -->
+    <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -335,6 +337,7 @@
                 <button class="nav-button" onclick="showSection('data')">📝 Data</button>
                 <button class="nav-button" onclick="showSection('query')">🔍 Query</button>
                 <button class="nav-button" onclick="showSection('views')">👁️ Views</button>
+                <button class="nav-button" onclick="showSection('visualize')">📈 Visualize</button>
                 <button class="nav-button" onclick="showSection('explore')">🗺️ Explore</button>
             </div>
 
@@ -567,6 +570,54 @@
                     </div>
 
                     <div id="viewsResult" class="result-box hidden"></div>
+                </div>
+
+                <!-- Visualization Section -->
+                <div id="section-visualize" class="section hidden">
+                    <h2>Graph Visualization</h2>
+                
+                    <div class="info">
+                        <strong>📈 Visualize:</strong> View your graph data, views, and query results as interactive network diagrams.
+                    </div>
+                
+                    <div class="form-group">
+                        <label>Visualization Source</label>
+                        <select id="vizSource" onchange="updateVizOptions()">
+                            <option value="base">Base Graph (All Data)</option>
+                            <option value="view">View</option>
+                            <option value="query">Custom Query</option>
+                        </select>
+                    </div>
+                
+                    <div id="vizViewOptions" class="form-group hidden">
+                        <label>Select View</label>
+                        <select id="vizViewName">
+                            <option value="">-- Select View --</option>
+                        </select>
+                    </div>
+                
+                    <div id="vizQueryOptions" class="form-group hidden">
+                        <label>Query (MATCH ... RETURN)</label>
+                        <textarea id="vizQuery"
+                            placeholder='MATCH (a:Person)-[x:knows]->(b:Person) FROM g RETURN (a),(x),(b)'></textarea>
+                    </div>
+                
+                    <div class="form-group">
+                        <label>Limit Nodes (for performance)</label>
+                        <input type="number" id="vizLimit" value="100" min="10" max="1000">
+                    </div>
+                
+                    <div class="quick-actions">
+                        <button class="btn btn-success" onclick="visualizeGraph()">🎨 Visualize</button>
+                        <button class="btn btn-secondary" onclick="clearVisualization()">🗑️ Clear</button>
+                        <button class="btn btn-secondary" onclick="exportVisualization()">💾 Export PNG</button>
+                    </div>
+                
+                    <div id="graphContainer"
+                        style="width: 100%; height: 600px; border: 2px solid #e5e7eb; border-radius: 8px; margin-top: 20px; background: #f9fafb;">
+                    </div>
+                
+                    <div id="vizStats" class="result-box hidden" style="margin-top: 15px;"></div>
                 </div>
 
                 <!-- Explore Section -->
@@ -844,6 +895,478 @@
             
             showResult('exploreResult', stats);
         }
+
+            // Visualization Functions
+            let network = null;
+            let visualizationData = null;
+
+            function updateVizOptions() {
+                const source = document.getElementById('vizSource').value;
+                const viewOptions = document.getElementById('vizViewOptions');
+                const queryOptions = document.getElementById('vizQueryOptions');
+
+                if (source === 'view') {
+                    viewOptions.classList.remove('hidden');
+                    queryOptions.classList.add('hidden');
+                    loadViewsForVisualization();
+                } else if (source === 'query') {
+                    viewOptions.classList.add('hidden');
+                    queryOptions.classList.remove('hidden');
+                } else {
+                    viewOptions.classList.add('hidden');
+                    queryOptions.classList.add('hidden');
+                }
+            }
+
+            async function loadViewsForVisualization() {
+                try {
+                    const response = await fetch(`${API_URL}/views`);
+                    const result = await response.json();
+
+                    if (result.success && result.views) {
+                        const select = document.getElementById('vizViewName');
+                        select.innerHTML = '<option value="">-- Select View --</option>';
+
+                        const viewMatches = result.views.match(/viewName: (\w+)/g);
+                        if (viewMatches) {
+                            viewMatches.forEach(match => {
+                                const viewName = match.replace('viewName: ', '');
+                                select.innerHTML += `<option value="${viewName}">${viewName}</option>`;
+                            });
+                        }
+                    }
+                } catch (error) {
+                    console.error('Error loading views:', error);
+                }
+            }
+
+            async function visualizeGraph() {
+                const source = document.getElementById('vizSource').value;
+                const limit = parseInt(document.getElementById('vizLimit').value);
+
+                showResult('vizStats', '⏳ Loading data...');
+
+                try {
+                    // Get current graph status
+                    const statusResponse = await fetch(`${API_URL}/status`);
+                    const status = await statusResponse.json();
+                    
+                    if (!status.currentGraph) {
+                        showResult('vizStats', '⚠️ Please select a database first');
+                        return;
+                    }
+
+                    let fromClause = 'g';
+                    
+                    if (source === 'view') {
+                        const viewName = document.getElementById('vizViewName').value;
+                        if (!viewName) {
+                            showResult('vizStats', '⚠️ Please select a view');
+                            return;
+                        }
+                        fromClause = viewName;
+                    } else if (source === 'query') {
+                        const customQuery = document.getElementById('vizQuery').value.trim();
+                        if (customQuery) {
+                            // Execute custom query directly
+                            await executeCustomQueryVisualization(customQuery, limit);
+                            return;
+                        }
+                    }
+
+                    // Fetch real data from PostgreSQL via API
+                    await visualizeFromDatabase(fromClause, limit);
+
+                } catch (error) {
+                    showResult('vizStats', `❌ Error: ${error.message}`);
+                    console.error('Visualization error:', error);
+                }
+            }
+
+            async function visualizeFromDatabase(fromClause, limit) {
+                try {
+                    showResult('vizStats', '⏳ Fetching graph data...');
+                    
+                    // Use the new visualization endpoint for base graph
+                    if (fromClause === 'g') {
+                        const response = await fetch(`${API_URL}/visualize/graph?limit=${limit}`);
+                        const result = await response.json();
+                        
+                        if (!result.success) {
+                            throw new Error(result.error || 'Failed to fetch visualization data');
+                        }
+                        
+                        renderVisualizationFromAPI(result.nodes, result.edges);
+                    } else {
+                        // For views, use the visualization endpoint with view parameter
+                        const viewName = fromClause;
+                        const response = await fetch(`${API_URL}/visualize/graph?limit=${limit}&view=${viewName}`);
+                        const result = await response.json();
+                        
+                        if (result.success) {
+                            renderVisualizationFromAPI(result.nodes, result.edges);
+                        } else {
+                            showResult('vizStats', `❌ Error visualizing view: ${result.error}<br><br>💡 Tip: Try using "Base Graph" source.`);
+                        }
+                    }
+
+                } catch (error) {
+                    console.error('Error fetching from database:', error);
+                    showResult('vizStats', `❌ Error: ${error.message}`);
+                }
+            }
+            
+            function renderVisualizationFromAPI(apiNodes, apiEdges) {
+                const nodes = [];
+                const edges = [];
+                
+                const colors = {
+                    'Person': '#667eea',
+                    'Company': '#10b981',
+                    'Product': '#f59e0b',
+                    'default': '#94a3b8'
+                };
+                
+                const shapes = {
+                    'Person': 'dot',
+                    'Company': 'diamond',
+                    'Product': 'square',
+                    'default': 'dot'
+                };
+                
+                // Process nodes
+                apiNodes.forEach(node => {
+                    let title = `Type: ${node.label}<br>ID: ${node.id}`;
+                    
+                    // Add properties to tooltip
+                    if (node.properties) {
+                        title += '<br>---';
+                        for (const [key, value] of Object.entries(node.properties)) {
+                            title += `<br>${key}: ${value}`;
+                        }
+                    }
+                    
+                    // Create display label
+                    let displayLabel = node.label;
+                    if (node.properties && node.properties.name) {
+                        displayLabel = node.properties.name;
+                    }
+                    
+                    nodes.push({
+                        id: node.id,
+                        label: displayLabel,
+                        title: title,
+                        color: colors[node.label] || colors['default'],
+                        shape: shapes[node.label] || shapes['default'],
+                        size: 25
+                    });
+                });
+                
+                // Process edges
+                apiEdges.forEach(edge => {
+                    let title = `Type: ${edge.label}<br>ID: ${edge.id}`;
+                    
+                    // Add properties to tooltip
+                    if (edge.properties) {
+                        title += '<br>---';
+                        for (const [key, value] of Object.entries(edge.properties)) {
+                            title += `<br>${key}: ${value}`;
+                        }
+                    }
+                    
+                    edges.push({
+                        id: edge.id,
+                        from: edge.from,
+                        to: edge.to,
+                        label: edge.label,
+                        title: title,
+                        arrows: 'to',
+                        color: { color: '#666' },
+                        width: 2
+                    });
+                });
+                
+                if (nodes.length === 0) {
+                    showResult('vizStats', '⚠️ No data found in the database.');
+                    return;
+                }
+                
+                renderVisualization(nodes, edges);
+            }
+
+            async function executeCustomQueryVisualization(query, limit) {
+                try {
+                    const response = await fetch(`${API_URL}/query`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ query: query })
+                    });
+                    
+                    const result = await response.json();
+                    
+                    if (!result.success) {
+                        throw new Error(result.error || 'Query failed');
+                    }
+
+                    parseAndRenderVisualization(result, null, limit);
+
+                } catch (error) {
+                    showResult('vizStats', `❌ Query error: ${error.message}`);
+                }
+            }
+
+            function parseAndRenderVisualization(nodeResult, edgeResult, limit) {
+                const nodes = [];
+                const edges = [];
+                const nodeMap = new Map(); // Map of node ID to node object
+                
+                const colors = {
+                    'Person': '#667eea',
+                    'Company': '#10b981',
+                    'Product': '#f59e0b',
+                    'default': '#94a3b8'
+                };
+
+                // Parse node output (tab-separated format)
+                if (nodeResult && nodeResult.output) {
+                    const lines = nodeResult.output.split('\n');
+                    let isHeader = false;
+                    let headerProcessed = false;
+                    
+                    for (const line of lines) {
+                        // Skip metadata lines
+                        if (line.includes('query result') || line.includes('etime') || 
+                            line.includes('newQuery') || line.includes('WHERES') ||
+                            line.includes('[Timing]') || line.includes('[Postgres') ||
+                            line.includes('===') || !line.trim()) {
+                            continue;
+                        }
+                        
+                        // Skip header row (contains "_0" etc)
+                        if (line.includes('_0') && !headerProcessed) {
+                            headerProcessed = true;
+                            continue;
+                        }
+                        
+                        // Parse node data (tab-separated: ID in first column)
+                        const parts = line.trim().split('\t');
+                        if (parts.length > 0 && parts[0]) {
+                            const nodeId = parseInt(parts[0].trim());
+                            if (!isNaN(nodeId) && !nodeMap.has(nodeId)) {
+                                // We don't have label info from this query, so fetch it or use default
+                                nodeMap.set(nodeId, {
+                                    id: nodeId,
+                                    label: `Node\n#${nodeId}`,
+                                    title: `Node ID: ${nodeId}`,
+                                    color: colors['default'],
+                                    shape: 'dot',
+                                    size: 20
+                                });
+                            }
+                        }
+                    }
+                }
+
+                // Parse edge output (tab-separated format: from_id, to_id, edge_id)
+                if (edgeResult && edgeResult.output) {
+                    const lines = edgeResult.output.split('\n');
+                    let headerProcessed = false;
+                    
+                    for (const line of lines) {
+                        // Skip metadata lines
+                        if (line.includes('query result') || line.includes('etime') || 
+                            line.includes('newQuery') || line.includes('WHERES') ||
+                            line.includes('[Timing]') || line.includes('[Postgres') ||
+                            line.includes('===') || !line.trim()) {
+                            continue;
+                        }
+                        
+                        // Skip header row
+                        if (line.includes('_0') && !headerProcessed) {
+                            headerProcessed = true;
+                            continue;
+                        }
+                        
+                        // Parse edge data (tab-separated: from_id, to_id, edge_id)
+                        const parts = line.trim().split('\t');
+                        if (parts.length >= 3) {
+                            const fromId = parseInt(parts[0].trim());
+                            const toId = parseInt(parts[1].trim());
+                            const edgeId = parseInt(parts[2].trim());
+                            
+                            if (!isNaN(fromId) && !isNaN(toId) && !isNaN(edgeId)) {
+                                // Add nodes if they don't exist
+                                if (!nodeMap.has(fromId)) {
+                                    nodeMap.set(fromId, {
+                                        id: fromId,
+                                        label: `#${fromId}`,
+                                        title: `Node ${fromId}`,
+                                        color: colors['default'],
+                                        shape: 'dot',
+                                        size: 20
+                                    });
+                                }
+                                if (!nodeMap.has(toId)) {
+                                    nodeMap.set(toId, {
+                                        id: toId,
+                                        label: `#${toId}`,
+                                        title: `Node ${toId}`,
+                                        color: colors['default'],
+                                        shape: 'dot',
+                                        size: 20
+                                    });
+                                }
+                                
+                                // Add edge
+                                edges.push({
+                                    id: edgeId,
+                                    from: fromId,
+                                    to: toId,
+                                    label: '',
+                                    arrows: 'to',
+                                    color: { color: '#999' }
+                                });
+                            }
+                        }
+                    }
+                }
+
+                // Convert map to array
+                nodes.push(...Array.from(nodeMap.values()));
+
+                // If we got no data, show message
+                if (nodes.length === 0) {
+                    showResult('vizStats', '⚠️ No data found. Try connecting to a database first.');
+                    return;
+                }
+
+                renderVisualization(nodes, edges);
+            }
+
+            function generateSampleVisualization(limit) {
+                // Generate nodes
+                const nodes = [];
+                const edges = [];
+
+                const colors = {
+                    'Person': '#667eea',
+                    'Company': '#10b981',
+                    'Product': '#f59e0b'
+                };
+
+                // Create nodes
+                for (let i = 1; i <= Math.min(limit, 50); i++) {
+                    const type = i <= 30 ? 'Person' : (i <= 40 ? 'Company' : 'Product');
+                    nodes.push({
+                        id: i,
+                        label: `${type} ${i}`,
+                        title: `Type: ${type}<br>ID: ${i}`,
+                        color: colors[type],
+                        shape: type === 'Person' ? 'dot' : (type === 'Company' ? 'diamond' : 'square'),
+                        size: 20
+                    });
+                }
+
+                // Create edges
+                for (let i = 1; i <= 30; i++) {
+                    const from = Math.floor(Math.random() * 30) + 1;
+                    const to = Math.floor(Math.random() * 50) + 1;
+                    if (from !== to) {
+                        edges.push({
+                            id: 1000 + i,
+                            from: from,
+                            to: to,
+                            label: i % 3 === 0 ? 'knows' : (i % 3 === 1 ? 'works_at' : 'bought'),
+                            arrows: 'to',
+                            color: { color: '#999' }
+                        });
+                    }
+                }
+
+                renderVisualization(nodes, edges);
+            }
+
+            function renderVisualization(nodes, edges) {
+                const container = document.getElementById('graphContainer');
+
+                const data = {
+                    nodes: new vis.DataSet(nodes),
+                    edges: new vis.DataSet(edges)
+                };
+
+                const options = {
+                    nodes: {
+                        font: {
+                            size: 14,
+                            color: '#333'
+                        },
+                        borderWidth: 2,
+                        borderWidthSelected: 4
+                    },
+                    edges: {
+                        width: 2,
+                        smooth: {
+                            type: 'continuous'
+                        },
+                        font: {
+                            size: 12,
+                            align: 'middle'
+                        }
+                    },
+                    physics: {
+                        stabilization: {
+                            iterations: 100
+                        },
+                        barnesHut: {
+                            gravitationalConstant: -2000,
+                            springConstant: 0.001,
+                            springLength: 200
+                        }
+                    },
+                    interaction: {
+                        hover: true,
+                        tooltipDelay: 100
+                    }
+                };
+
+                network = new vis.Network(container, data, options);
+                visualizationData = data;
+
+                // Add click event
+                network.on('click', function (params) {
+                    if (params.nodes.length > 0) {
+                        const nodeId = params.nodes[0];
+                        const node = data.nodes.get(nodeId);
+                        alert(`Node Details:\n${JSON.stringify(node, null, 2)}`);
+                    }
+                });
+
+                showResult('vizStats', `✅ Visualization complete! Nodes: ${nodes.length}, Edges: ${edges.length}`);
+            }
+
+            function clearVisualization() {
+                if (network) {
+                    network.destroy();
+                    network = null;
+                }
+                document.getElementById('vizStats').classList.add('hidden');
+            }
+
+            function exportVisualization() {
+                if (!network) {
+                    alert('Please create a visualization first');
+                    return;
+                }
+
+                const canvas = document.querySelector('#graphContainer canvas');
+                if (canvas) {
+                    const link = document.createElement('a');
+                    link.download = 'graph-visualization.png';
+                    link.href = canvas.toDataURL();
+                    link.click();
+                    showResult('vizStats', '✅ Graph exported as PNG!');
+                }
+            }
 
         // Initialize
         checkHealth();
